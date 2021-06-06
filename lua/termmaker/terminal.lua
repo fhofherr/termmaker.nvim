@@ -1,5 +1,8 @@
 local M = {}
 
+local window = require("termmaker.window")
+local buffer = require("termmaker.buffer")
+
 -- Terminal represents a single terminal inside neovim.
 --
 -- An instance of Terminal may be visible in a window or may currently be
@@ -13,50 +16,68 @@ setmetatable(M.Terminal, {
     end,
 })
 
-function M.Terminal.new()
-    local self = setmetatable({}, M.Terminal)
-    self.bufnr = 0
-    self.winnr = 0
-    return self
+function M.Terminal.new(opts)
+    return setmetatable({
+        _buf = nil,
+        _win = nil,
+        _job_id = 0,
+        _window_factory = (opts and opts.window_factory) or window.factory.current_window,
+    }, M.Terminal)
 end
 
 function M.Terminal:open()
-    if self.bufnr == 0 or not vim.api.nvim_buf_is_valid(self.bufnr) then
-        -- TODO make listing the buffer configurable
-        self.bufnr = vim.api.nvim_create_buf(true, false)
+    if not self._buf or not self._buf:is_valid() then
+        self._buf = buffer.Buffer()
+        self._buf:add_autocmd({"BufWinLeave"}, function()
+            self:close()
+        end)
     end
-    if self.winnr == 0 or not vim.api.nvim_win_is_valid(self.winnr) then
-        -- TODO remember the previous state of the window
-        -- TODO restore window state when unloading terminal buffer
-        -- TODO ensure window state is handled properly if terminal is loaded by other means (e.g. Telescope) => autocommands?
-        self.winnr = vim.api.nvim_get_current_win()
-        -- TODO move cursor to buffers window if it is already open
+    if self:has_window() then
+        self._win:jump()
+    else
+        self._win = self._window_factory()
+        self._win:set_opts({
+            winfixheight = false,
+            number = false,
+            relativenumber = false,
+        })
+        self._win:set_buf(self._buf:get_bufnr())
     end
-    self.prev_buf = vim.api.nvim_get_current_buf() -- TODO let strategy remember that
-    vim.api.nvim_win_set_buf(self.winnr, self.bufnr)
-    vim.fn.termopen({vim.env.SHELL})
+    if self._job_id == 0 then
+        self._job_id = vim.fn.termopen({vim.env.SHELL})
+    end
 end
 
 function M.Terminal:close()
-    if self.winnr == 0 then
+    if not self:has_window() then
         return
     end
-    if self.prev_buf then
-        vim.api.nvim_win_set_buf(self.winnr, self.prev_buf)
-    end
-    -- TODO restore window options => strategy dependent
-    self.winnr = 0
+    self._win:restore()
+    self._win = nil
 end
 
-local test_term
-function M.test_toggle()
-    if test_term then
-        test_term:close()
-        test_term = nil
-    else
-        test_term = M.Terminal()
-        test_term:open()
+function M.Terminal:kill()
+    self:close()
+    if self._job_id ~= 0 then
+        vim.fn.jobstop(self._job_id)
+        -- Do not wait for the terminal to stop. According to :h jobstop
+        -- Neovim will send SIGKILL if the job did not terminate after a
+        -- timeout. We are thus happy to know, that Neovim does all it can
+        -- to get rid of the job.
+        self._job_id = 0
     end
+end
+
+function M.Terminal:toggle()
+    if self:has_window() and self._win:is_current() then
+        self:close()
+    else
+        self:open()
+    end
+end
+
+function M.Terminal:has_window()
+    return self._win and self._win:is_valid()
 end
 
 return M
