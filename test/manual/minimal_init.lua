@@ -8,4 +8,7 @@ vim.cmd("set rtp+=.")
 vim.o.hidden = true
 
 -- Create a test terminal which can be accessed using :lua test_term
-_G.test_term = require("termmaker.terminal").Terminal()
+window = require("termmaker.window")
+_G.test_term = require("termmaker.terminal").Terminal({
+    window_factory = window.factory.new_window
+})

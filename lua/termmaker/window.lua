@@ -6,6 +6,16 @@ function M.factory.current_window()
     return M.Window(vim.api.nvim_get_current_win())
 end
 
+function M.factory.new_window(opts)
+    local cmd = "new"
+    if opts and opts.modifier then
+        cmd = ":" .. opts.modifier .. " " .. cmd
+    end
+    vim.api.nvim_command(cmd)
+
+    return M.factory.current_window()
+end
+
 M.Window = {}
 M.Window.__index = M.Window
 

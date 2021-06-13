@@ -2,12 +2,35 @@ local buffer = require("termmaker.buffer")
 local window = require("termmaker.window")
 
 describe("factory", function()
+    local cur_winid
+
+    before_each(function() cur_winid = vim.api.nvim_get_current_win() end)
+
     describe("#current_window", function()
         it("creates a wrapper for the current window", function()
-            local cur_winid = vim.api.nvim_get_current_win()
             local win = window.factory.current_window()
 
             assert.is.equal(cur_winid, win._winid)
+        end)
+    end)
+
+    describe("#new_window", function()
+        it("uses :new to create a new window", function()
+            local win = window.factory.new_window()
+
+            assert.is_not.equal(cur_winid, win._winid)
+            assert.is_true(win:is_valid())
+        end)
+
+        it("allows to pass an optional modifier", function()
+            local win = window.factory.new_window({modifier = "belowright"})
+
+            assert.is_not.equal(cur_winid, win._winid)
+            assert.is_true(win:is_valid())
+
+            vim.api.nvim_set_current_win(cur_winid)
+            vim.api.nvim_command("wincmd j")
+            assert.is_true(win:is_current())
         end)
     end)
 end)
