@@ -7,8 +7,4 @@ vim.cmd("set rtp+=.")
 -- Set hidden ... otherwise toggling terminals will not work.
 vim.o.hidden = true
 
--- Create a test terminal which can be accessed using :lua test_term
-window = require("termmaker.window")
-_G.test_term = require("termmaker.terminal").Terminal({
-    window_factory = window.factory.new_window
-})
+require("termmaker").setup()
