@@ -34,12 +34,18 @@ setmetatable(M.Buffer, {
     end,
 })
 
-function M.Buffer.new()
+function M.Buffer.new(opts)
     local self = setmetatable({}, M.Buffer)
 
     -- TODO make listing the buffer configurable
     self._bufnr = vim.api.nvim_create_buf(true, false)
     buffers[self._bufnr] = self
+
+    if opts then
+        if opts.filetype then
+            vim.api.nvim_buf_set_option(self._bufnr, "filetype", opts.filetype)
+        end
+    end
 
     self._autocmds = {}
     self:add_autocmd("BufWipeout", function()

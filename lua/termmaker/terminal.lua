@@ -27,7 +27,9 @@ end
 
 function M.Terminal:open()
     if not self._buf or not self._buf:is_valid() then
-        self._buf = buffer.Buffer()
+        self._buf = buffer.Buffer({
+            filetype = "termmaker" -- TODO make buffer filetype configurable?
+        })
         self._buf:add_autocmd({"BufWinLeave"}, function()
             self:close()
         end)
