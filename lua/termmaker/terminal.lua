@@ -44,8 +44,19 @@ function M.Terminal:open()
         self._win:set_buf(self._buf:get_bufnr())
     end
     if self._job_id == 0 then
-        self._job_id = vim.fn.termopen({vim.env.SHELL})
+        self._job_id = vim.fn.termopen(
+            {vim.env.SHELL},
+            {
+                on_exit = function() self:_on_exit() end
+            }
+        )
     end
+end
+
+function M.Terminal:_on_exit()
+    self:close()
+    self._buf:kill()
+    self._job_id = 0
 end
 
 function M.Terminal:close()
