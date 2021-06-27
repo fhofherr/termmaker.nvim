@@ -2,8 +2,8 @@ local M = {}
 
 M.factory = {}
 
-function M.factory.current_window()
-    return M.Window(vim.api.nvim_get_current_win())
+function M.factory.current_window(opts)
+    return M.Window(vim.api.nvim_get_current_win(), opts)
 end
 
 function M.factory.new_window(opts)
@@ -12,8 +12,17 @@ function M.factory.new_window(opts)
         cmd = ":" .. opts.modifier .. " " .. cmd
     end
     vim.api.nvim_command(cmd)
+    if not opts then
+        opts = {}
+    end
+    opts.pre_restore = function(win)
+        if vim.api.nvim_win_is_valid(win._winid) then
+            vim.api.nvim_win_close(win._winid, true)
+            return true
+        end
+    end
 
-    return M.factory.current_window()
+    return M.factory.current_window(opts)
 end
 
 M.Window = {}
@@ -25,13 +34,14 @@ setmetatable(M.Window, {
     end,
 })
 
-function M.Window.new(winid)
+function M.Window.new(winid, opts)
     assert(winid, "Window number must not be nil")
     assert(winid ~= 0, "Window number must not be 0")
 
     local self = setmetatable({}, M.Window)
     self._prev_bufnr = nil
-    self._prev_opts = {}
+    self._prev_window_opts = {}
+    self._pre_restore = (opts and opts.pre_restore)
 
     self._winid = winid
 
@@ -46,24 +56,28 @@ function M.Window:set_buf(bufnr)
     vim.api.nvim_win_set_buf(self._winid, bufnr)
 end
 
-function M.Window:set_opts(opts)
+function M.Window:set_window_opts(opts)
     for k, v in pairs(opts) do
-        if not self._prev_opts[k] then
-            self._prev_opts[k] = vim.api.nvim_win_get_option(self._winid, k)
+        if not self._prev_window_opts[k] then
+            self._prev_window_opts[k] = vim.api.nvim_win_get_option(self._winid, k)
         end
         vim.api.nvim_win_set_option(self._winid, k, v)
     end
 end
 
 function M.Window:restore()
+    if self._pre_restore and self._pre_restore(self) then
+        return
+    end
     if self._prev_bufnr and vim.api.nvim_buf_is_valid(self._prev_bufnr) then
         vim.api.nvim_win_set_buf(self._winid, self._prev_bufnr)
         self._prev_bufnr = nil
     end
-    for k, v in pairs(self._prev_opts) do
+    for k, v in pairs(self._prev_window_opts) do
         vim.api.nvim_win_set_option(self._winid, k, v)
-        self._prev_opts[k] = nil
+        self._prev_window_opts[k] = nil
     end
+    self._prev_window_opts = {}
 end
 
 function M.Window:jump()

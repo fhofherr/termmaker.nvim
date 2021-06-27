@@ -46,7 +46,7 @@ function M.Terminal:open()
         self._win:jump()
     else
         self._win = self._window_factory()
-        self._win:set_opts({
+        self._win:set_window_opts({
             winfixheight = false,
             number = false,
             relativenumber = false,

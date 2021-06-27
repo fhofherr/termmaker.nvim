@@ -55,12 +55,12 @@ describe("Window", function()
         end)
     end)
 
-    describe("#set_opts", function()
+    describe("#set_window_opts", function()
         it("modifies the window options", function()
             local number_val = not vim.api.nvim_win_get_option(initial_winid, "number")
             local relativenumber_val = not vim.api.nvim_win_get_option(initial_winid, "relativenumber")
 
-            win:set_opts({
+            win:set_window_opts({
                 number = number_val,
                 relativenumber = relativenumber_val,
             })
@@ -84,7 +84,7 @@ describe("Window", function()
         it("restores any changed window options", function()
             local val = vim.api.nvim_win_get_option(win._winid, "number")
 
-            win:set_opts({ number = not val })
+            win:set_window_opts({ number = not val })
             win:restore()
 
             assert.is.equal(val, vim.api.nvim_win_get_option(win._winid, "number"))
