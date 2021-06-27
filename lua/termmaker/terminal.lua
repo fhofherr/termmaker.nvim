@@ -17,11 +17,19 @@ setmetatable(M.Terminal, {
 })
 
 function M.Terminal.new(opts)
+    local window_factory = window.factory.current_window
+    if opts and opts.window_factory then
+        if type(opts.window_factory) == "string" then
+            window_factory = window.factory[opts.window_factory]
+        else
+            window_factory = opts.window_factory
+        end
+    end
     return setmetatable({
         _buf = nil,
         _win = nil,
         _job_id = 0,
-        _window_factory = (opts and opts.window_factory) or window.factory.current_window,
+        _window_factory = window_factory or window.factory.current_window,
     }, M.Terminal)
 end
 
