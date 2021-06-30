@@ -1,0 +1,10 @@
+{
+  "lua/*.lua": {
+    "alternate": "test/auto/{}_spec.lua",
+    "type": "source"
+  },
+  "test/auto/*_spec.lua": {
+    "alternate": "lua/{}.lua",
+    "type": "test"
+  }
+}
