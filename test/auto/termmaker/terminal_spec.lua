@@ -1,3 +1,4 @@
+local buffer = require("termmaker.buffer")
 local terminal = require("termmaker.terminal")
 local window = require("termmaker.window")
 
@@ -24,10 +25,6 @@ describe("Terminal", function()
         assert.is.equal(0, term._job_id)
     end)
 
-    it("uses current_window as its default window factory", function()
-        assert.is.equal(window.factory.current_window, term._window_factory)
-    end)
-
     describe("#open", function()
         it("initializes a new buffer", function()
             term:open()
@@ -49,9 +46,9 @@ describe("Terminal", function()
             assert.is_true(term._job_id > 0)
         end)
 
-        it("adds a call to #close on BufWinLeave", function()
+        it("adds a call to #close on buffer.win_leave", function()
             term:open()
-            term._buf._autocmds.BufWinLeave[1]()
+            term._buf:notify_all(buffer.win_leave)
             assert.is_nil(term._win)
         end)
     end)

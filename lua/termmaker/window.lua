@@ -1,102 +1,113 @@
 local M = {}
 
-M.factory = {}
+local buffer = require("termmaker.buffer")
 
-function M.factory.current_window(opts)
-    return M.Window(vim.api.nvim_get_current_win(), opts)
+function M.current()
+    return function()
+	    return vim.api.nvim_get_current_win(), false
+    end
 end
 
-function M.factory.new_window(opts)
-    local cmd = "new"
-    if opts and opts.modifier then
-        cmd = ":" .. opts.modifier .. " " .. cmd
+function M.horizontal_split()
+    return function()
+        vim.api.nvim_command("split")
+	    return vim.api.nvim_get_current_win(), true
     end
-    vim.api.nvim_command(cmd)
-    if not opts then
-        opts = {}
-    end
-    opts.pre_restore = function(win)
-        if vim.api.nvim_win_is_valid(win._winid) then
-            vim.api.nvim_win_close(win._winid, true)
-            return true
-        end
-    end
+end
 
-    return M.factory.current_window(opts)
+function M.vertical_split()
+    return function()
+        vim.api.nvim_command("vsplit")
+	    return vim.api.nvim_get_current_win(), true
+    end
 end
 
 M.Window = {}
 M.Window.__index = M.Window
 
 setmetatable(M.Window, {
-    __call = function(cls, ...)
-        return cls.new(...)
-    end,
+	__call = function(cls, ...)
+		return cls.new(...)
+	end,
 })
 
-function M.Window.new(winid, opts)
-    assert(winid, "Window number must not be nil")
-    assert(winid ~= 0, "Window number must not be 0")
+function M.Window.new(opts)
+	local self = setmetatable({}, M.Window)
 
-    local self = setmetatable({}, M.Window)
-    self._prev_bufnr = nil
-    self._prev_window_opts = {}
-    self._pre_restore = (opts and opts.pre_restore)
-
-    self._winid = winid
-
-    return self
-end
-
-function M.Window:set_buf(bufnr)
-    assert(bufnr, "Buffer number must not be nil")
-    assert(bufnr ~= 0, "Buffer number must not be 0")
-
-    self._prev_bufnr = vim.api.nvim_win_get_buf(self._winid)
-    vim.api.nvim_win_set_buf(self._winid, bufnr)
-end
-
-function M.Window:set_window_opts(opts)
-    for k, v in pairs(opts) do
-        if not self._prev_window_opts[k] then
-            self._prev_window_opts[k] = vim.api.nvim_win_get_option(self._winid, k)
-        end
-        vim.api.nvim_win_set_option(self._winid, k, v)
+    local window_factory = M.current()
+    if opts and opts.window_factory then
+        window_factory = opts.window_factory
     end
+	self._winid, self._close_on_restore = window_factory()
+
+	self._prev_window_opts = {}
+	if opts and opts.window_options then
+		for k, v in pairs(opts.window_options) do
+			if not self._prev_window_opts[k] then
+				self._prev_window_opts[k] = vim.api.nvim_win_get_option(self._winid, k)
+			end
+			vim.api.nvim_win_set_option(self._winid, k, v)
+		end
+	end
+
+	return self
+end
+
+function M.Window:show_buffer(buf_or_bufnr)
+    local bufnr = 0
+
+    if type(buf_or_bufnr) == "number" then
+        bufnr = buf_or_bufnr
+    elseif type(buf_or_bufnr) == "table" and getmetatable(buf_or_bufnr) == buffer.Buffer then
+        bufnr = buf_or_bufnr:get_bufnr()
+    end
+	assert(bufnr ~= 0, "buf_or_bufnr was 0 or not a buffer.Buffer")
+
+	self._prev_bufnr = vim.api.nvim_win_get_buf(self._winid)
+	vim.api.nvim_win_set_buf(self._winid, bufnr)
 end
 
 function M.Window:restore()
-    if self._pre_restore and self._pre_restore(self) then
+    if self._close_on_restore then
+		vim.api.nvim_win_close(self._winid, true)
         return
     end
-    if self._prev_bufnr and vim.api.nvim_buf_is_valid(self._prev_bufnr) then
-        vim.api.nvim_win_set_buf(self._winid, self._prev_bufnr)
-        self._prev_bufnr = nil
-    end
+
+    -- Restore any previous window options
     for k, v in pairs(self._prev_window_opts) do
-        vim.api.nvim_win_set_option(self._winid, k, v)
-        self._prev_window_opts[k] = nil
-    end
-    self._prev_window_opts = {}
+		vim.api.nvim_win_set_option(self._winid, k, v)
+		self._prev_window_opts[k] = nil
+	end
+	self._prev_window_opts = {}
+
+    -- Restore the previous buffer
+	if self._prev_bufnr and vim.api.nvim_buf_is_valid(self._prev_bufnr) then
+		vim.api.nvim_win_set_buf(self._winid, self._prev_bufnr)
+		self._prev_bufnr = nil
+	end
 end
 
 function M.Window:jump()
-    local tabnr = vim.api.nvim_win_get_tabpage(self._winid)
-    if tabnr ~= vim.api.nvim_get_current_tabpage() then
-        print("Jumping to tabpage " .. tabnr)
-        vim.api.nvim_command(tabnr .. "tabnext")
+    if self:is_current() then
+        return
     end
 
-    local winnr = vim.api.nvim_win_get_number(self._winid)
-    vim.api.nvim_command(winnr .. "wincmd w")
+	local tabnr = vim.api.nvim_win_get_tabpage(self._winid)
+	if tabnr ~= vim.api.nvim_get_current_tabpage() then
+		-- print("Jumping to tabpage " .. tabnr)
+		vim.api.nvim_command(tabnr .. "tabnext")
+	end
+
+	local winnr = vim.api.nvim_win_get_number(self._winid)
+	vim.api.nvim_command(winnr .. "wincmd w")
 end
 
 function M.Window:is_valid()
-    return vim.api.nvim_win_is_valid(self._winid)
+	return vim.api.nvim_win_is_valid(self._winid)
 end
 
 function M.Window:is_current()
-    return vim.api.nvim_get_current_win() == self._winid
+	return vim.api.nvim_get_current_win() == self._winid
 end
 
 return M

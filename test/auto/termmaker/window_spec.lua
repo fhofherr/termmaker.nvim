@@ -1,51 +1,25 @@
 local buffer = require("termmaker.buffer")
 local window = require("termmaker.window")
 
-describe("factory", function()
-    local cur_winid
-
-    before_each(function() cur_winid = vim.api.nvim_get_current_win() end)
-
-    describe("#current_window", function()
-        it("creates a wrapper for the current window", function()
-            local win = window.factory.current_window()
-
-            assert.is.equal(cur_winid, win._winid)
-        end)
-    end)
-
-    describe("#new_window", function()
-        it("uses :new to create a new window", function()
-            local win = window.factory.new_window()
-
-            assert.is_not.equal(cur_winid, win._winid)
-            assert.is_true(win:is_valid())
-        end)
-
-        it("allows to pass an optional modifier", function()
-            local win = window.factory.new_window({modifier = "belowright"})
-
-            assert.is_not.equal(cur_winid, win._winid)
-            assert.is_true(win:is_valid())
-
-            vim.api.nvim_set_current_win(cur_winid)
-            vim.api.nvim_command("wincmd j")
-            assert.is_true(win:is_current())
-        end)
-    end)
-end)
-
 describe("Window", function()
-    local win, initial_winid
+    local wo_number
+    local win
+    local initial_winid
 
     before_each(function()
         initial_winid = vim.api.nvim_get_current_win()
-        win = window.Window(initial_winid)
+        wo_number = vim.api.nvim_win_get_option(initial_winid, "number")
+        win = window.Window({
+            window_options = {
+                number = not wo_number
+            }
+        })
     end)
 
     after_each(function() win:restore() end)
 
-    it("wraps the current neovim window", function()
+    it("wraps the current neovim window by default", function()
+        local win = window.Window()
         assert.is.equal(initial_winid, win._winid)
     end)
 
@@ -55,39 +29,20 @@ describe("Window", function()
         end)
     end)
 
-    describe("#set_window_opts", function()
-        it("modifies the window options", function()
-            local number_val = not vim.api.nvim_win_get_option(initial_winid, "number")
-            local relativenumber_val = not vim.api.nvim_win_get_option(initial_winid, "relativenumber")
-
-            win:set_window_opts({
-                number = number_val,
-                relativenumber = relativenumber_val,
-            })
-
-            assert.is.equal(number_val, vim.api.nvim_win_get_option(initial_winid, "number"))
-            assert.is.equal(relativenumber_val, vim.api.nvim_win_get_option(initial_winid, "relativenumber"))
-        end)
-    end)
-
     describe("#restore", function()
         it("restores the window's previous buffer", function()
             local cur_bufnr = vim.api.nvim_get_current_buf()
             local buf = buffer.Buffer()
 
-            win:set_buf(buf:get_bufnr())
+            win:show_buffer(buf)
             win:restore()
 
             assert.is.equal(cur_bufnr, vim.api.nvim_win_get_buf(win._winid))
         end)
 
         it("restores any changed window options", function()
-            local val = vim.api.nvim_win_get_option(win._winid, "number")
-
-            win:set_window_opts({ number = not val })
             win:restore()
-
-            assert.is.equal(val, vim.api.nvim_win_get_option(win._winid, "number"))
+            assert.is.equal(wo_number, vim.api.nvim_win_get_option(win._winid, "number"))
         end)
     end)
 
