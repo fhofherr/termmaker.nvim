@@ -14,7 +14,8 @@ setmetatable(M.Source, {
 })
 
 function M.make_source(o)
-    src = M.Source.new()
+    local src = M.Source.new()
+
     o.register = function(_, event_name, observer)
         src:register(event_name, observer)
     end
@@ -93,7 +94,7 @@ function M.add_autocmd(autocmd_name, observer, opts)
     if opts and opts.buffer then
         cmd_str = string.format("%s <buffer=%d>", cmd_str, opts.buffer)
         arg_str = string.format("%s, %d", arg_str, opts.buffer)
-        observer = check_pred(observer, function(event_name, bufnr)
+        observer = check_pred(observer, function(_, bufnr)
             return opts.buffer == bufnr
         end)
     end

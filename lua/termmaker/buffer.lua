@@ -2,6 +2,12 @@ local M = {}
 
 local event = require("termmaker.event")
 
+M.default_opts = {
+    filetype = "termmaker",
+    list_buffer = true,
+    t_mappings = {},
+}
+
 -- Buffer events
 M.win_leave = "buf_win_leave"
 
@@ -18,8 +24,8 @@ function M.Buffer.new(opts)
     local self = setmetatable({}, M.Buffer)
     event.make_source(self)
 
-    -- TODO make listing the buffer configurable
-    self._bufnr = vim.api.nvim_create_buf(true, false)
+    opts = vim.tbl_extend("keep", opts or {}, M.default_opts)
+    self._bufnr = vim.api.nvim_create_buf(true, opts.list_buffer)
 
     if opts then
         if opts.filetype then
@@ -35,6 +41,10 @@ function M.Buffer.new(opts)
     end, {
         buffer = self._bufnr,
     })
+
+    for lhs, rhs in ipairs(opts.t_mappings) do
+        vim.api.nvim_buf_set_keymap(self._bufnr, "t", lhs, rhs, { silent = true, noremap = true })
+    end
 
     return self
 end

@@ -3,6 +3,15 @@ local M = {}
 local window = require("termmaker.window")
 local buffer = require("termmaker.buffer")
 
+local default_opts = {
+    cmd = { vim.env.SHELL },
+    env = nil,
+    clear_env = false,
+    window_opts = {
+        window_factory = window.current(),
+    }
+}
+
 -- Terminal represents a single terminal inside neovim.
 --
 -- An instance of Terminal may be visible in a window or may currently be
@@ -19,12 +28,12 @@ setmetatable(M.Terminal, {
 function M.Terminal.new(opts)
     local self = setmetatable({}, M.Terminal)
 
+    opts = vim.tbl_extend("keep", opts or {}, default_opts)
+
     self._buf = nil
     self._win = nil
     self._job_id = 0
-    if opts and opts.window_factory then
-        self._window_factory = opts.window_factory
-    end
+    self._opts = opts
 
     return self
 end
@@ -39,7 +48,9 @@ function M.Terminal:open()
 
     self._win:jump()
     if self._job_id == 0 then
-        self._job_id = vim.fn.termopen({ vim.env.SHELL }, {
+        self._job_id = vim.fn.termopen(self._opts.cmd, {
+            env = self._opts.env,
+            clear_env = self._opts.clear_env,
             on_exit = function()
                 self:_on_exit()
             end,
@@ -48,24 +59,15 @@ function M.Terminal:open()
 end
 
 function M.Terminal:_init_buffer()
-    self._buf = buffer.Buffer({
-        filetype = "termmaker", -- TODO make buffer filetype configurable?
-    })
-    self._buf:register(buffer.win_leave, function(event_name, ...)
+    self._buf = buffer.Buffer(self._opts.buffer_opts)
+    self._buf:register(buffer.win_leave, function()
         self:close()
         return false
     end)
 end
 
 function M.Terminal:_init_window()
-    self._win = window.Window({
-        window_factory = self._window_factory,
-        window_options = {
-            winfixheight = false,
-            number = false,
-            relativenumber = false,
-        },
-    })
+    self._win = window.Window(self._opts.window_opts)
     self._win:show_buffer(self._buf)
 end
 

@@ -67,6 +67,18 @@ function M.auto_split(opts)
     end
 end
 
+local default_opts = {
+    window_factory = M.current(),
+    winfixheight = false,
+    number = false,
+    relativenumber = false,
+}
+
+-- set of private options so we don't try to set them as vim window options.
+local private_options = {
+    window_factory = true,
+}
+
 M.Window = {}
 M.Window.__index = M.Window
 
@@ -79,15 +91,12 @@ setmetatable(M.Window, {
 function M.Window.new(opts)
     local self = setmetatable({}, M.Window)
 
-    local window_factory = M.current()
-    if opts and opts.window_factory then
-        window_factory = opts.window_factory
-    end
-    self._winid, self._close_on_restore = window_factory()
+    opts = vim.tbl_extend("keep", opts or {}, default_opts)
+    self._winid, self._close_on_restore = opts.window_factory()
 
     self._prev_window_opts = {}
-    if opts and opts.window_options then
-        for k, v in pairs(opts.window_options) do
+    for k, v in pairs(opts) do
+        if not private_options[k] then
             if not self._prev_window_opts[k] then
                 self._prev_window_opts[k] = vim.api.nvim_win_get_option(self._winid, k)
             end
