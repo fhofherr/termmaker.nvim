@@ -1,12 +1,14 @@
 local M = {}
 
-local window = require("termmaker.window")
 local buffer = require("termmaker.buffer")
+local event = require("termmaker.event")
+local window = require("termmaker.window")
 
 local default_opts = {
     cmd = { vim.env.SHELL },
     env = nil,
     clear_env = false,
+    kill_on_exit = true,
     window_opts = {
         window_factory = window.current(),
     }
@@ -34,6 +36,12 @@ function M.Terminal.new(opts)
     self._win = nil
     self._job_id = 0
     self._opts = opts
+
+    if opts.kill_on_exit then
+        event.add_autocmd("ExitPre", function()
+            self:kill()
+        end)
+    end
 
     return self
 end
