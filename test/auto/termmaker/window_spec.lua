@@ -11,12 +11,14 @@ describe("Window", function()
         wo_number = vim.api.nvim_win_get_option(initial_winid, "number")
         win = window.Window({
             window_options = {
-                number = not wo_number
-            }
+                number = not wo_number,
+            },
         })
     end)
 
-    after_each(function() win:restore() end)
+    after_each(function()
+        win:restore()
+    end)
 
     it("wraps the current neovim window by default", function()
         local win = window.Window()

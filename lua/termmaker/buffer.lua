@@ -32,7 +32,9 @@ function M.Buffer.new(opts)
     event.add_autocmd("BufWinLeave", function(_, ...)
         self.notify_all(M.win_leave, ...)
         return self:is_valid()
-    end, { buffer = self._bufnr })
+    end, {
+        buffer = self._bufnr,
+    })
 
     return self
 end

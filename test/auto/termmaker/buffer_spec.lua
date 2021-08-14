@@ -3,8 +3,12 @@ local buffer = require("termmaker.buffer")
 describe("Buffer", function()
     local buf
 
-    before_each(function() buf = buffer.Buffer() end)
-    after_each(function() buf:kill() end)
+    before_each(function()
+        buf = buffer.Buffer()
+    end)
+    after_each(function()
+        buf:kill()
+    end)
 
     it("represents a neovim buffer", function()
         assert.is_true(vim.api.nvim_buf_is_valid(buf:get_bufnr()))
