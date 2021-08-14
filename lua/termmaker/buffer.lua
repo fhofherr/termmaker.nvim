@@ -25,13 +25,9 @@ function M.Buffer.new(opts)
     event.make_source(self)
 
     opts = vim.tbl_extend("keep", opts or {}, M.default_opts)
-    self._bufnr = vim.api.nvim_create_buf(true, opts.list_buffer)
 
-    if opts then
-        if opts.filetype then
-            vim.api.nvim_buf_set_option(self._bufnr, "filetype", opts.filetype)
-        end
-    end
+    self._bufnr = vim.api.nvim_create_buf(true, opts.list_buffer)
+    vim.api.nvim_buf_set_option(self._bufnr, "filetype", opts.filetype)
 
     -- Note: the implementation of add_autocmd ensures that the first element
     -- of the varargs is the buffer number.
@@ -42,7 +38,7 @@ function M.Buffer.new(opts)
         buffer = self._bufnr,
     })
 
-    for lhs, rhs in ipairs(opts.t_mappings) do
+    for lhs, rhs in pairs(opts.t_mappings) do
         vim.api.nvim_buf_set_keymap(self._bufnr, "t", lhs, rhs, { silent = true, noremap = true })
     end
 
